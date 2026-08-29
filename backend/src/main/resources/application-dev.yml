@@ -1,0 +1,22 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5433/morningcoffee
+    username: mc
+    password: mc_local_dev
+
+logging:
+  level:
+    org.hibernate.SQL: DEBUG
+    org.hibernate.orm.jdbc.bind: TRACE
+
+  pattern:
+    console: "%clr(%d{HH:mm:ss}){faint} %clr(%-5level) %clr(%logger{20}){cyan} %msg%n"
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
