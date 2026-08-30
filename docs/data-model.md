@@ -11,15 +11,15 @@ są opisane w modelu pojęciowym, ale ich tabele powstaną w kolejnych etapach.
 
 Byty wynikają z historii użytkownika opisanych w `user-stories.md`.
 
-| Byt | Opis |
-|---|---|
-| **Kawa** | Konkretne ziarno od konkretnego producenta. Ma pochodzenie, obróbkę, wysokość uprawy, ocenę i nuty smakowe. Sama w sobie nie jest przedmiotem zakupu. |
-| **Wariant** | Kawa w konkretnej postaci: stopień zmielenia i gramatura. Jedyny byt, który da się kupić. Ma własną cenę i własny stan magazynowy. |
-| **Klient** | Osoba z kontem w sklepie. |
-| **Koszyk** | Zbiór tego, co klient zamierza kupić. Zmienny, bez skutków prawnych. Należy do klienta albo do niezalogowanego gościa. |
-| **Pozycja koszyka** | Wskazanie wariantu wraz z ilością. |
-| **Zamówienie** | Moment, w którym zamiar staje się zobowiązaniem. Ma numer, status, adres dostawy i kwotę. |
-| **Pozycja zamówienia** | Zapis tego, co i za ile zostało kupione. |
+| Byt                    | Opis                                                                                                                                                  |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Kawa**               | Konkretne ziarno od konkretnego producenta. Ma pochodzenie, obróbkę, wysokość uprawy, ocenę i nuty smakowe. Sama w sobie nie jest przedmiotem zakupu. |
+| **Wariant**            | Kawa w konkretnej postaci: stopień zmielenia i gramatura. Jedyny byt, który da się kupić. Ma własną cenę i własny stan magazynowy.                    |
+| **Klient**             | Osoba z kontem w sklepie.                                                                                                                             |
+| **Koszyk**             | Zbiór tego, co klient zamierza kupić. Zmienny, bez skutków prawnych. Należy do klienta albo do niezalogowanego gościa.                                |
+| **Pozycja koszyka**    | Wskazanie wariantu wraz z ilością.                                                                                                                    |
+| **Zamówienie**         | Moment, w którym zamiar staje się zobowiązaniem. Ma numer, status, adres dostawy i kwotę.                                                             |
+| **Pozycja zamówienia** | Zapis tego, co i za ile zostało kupione.                                                                                                              |
 
 ### Związki
 
@@ -67,6 +67,47 @@ erDiagram
         timestamptz updated_at
     }
 ```
+
+---
+
+## Ograniczenia
+
+Ograniczenia wyrażają reguły dziedziny i są egzekwowane przez bazę danych.
+Sprawdzenie w kodzie aplikacji jest uzupełnieniem służącym czytelnym
+komunikatom, nigdy zamiennikiem — dane mogą trafić do bazy również
+z migracji, skryptu lub konsoli administracyjnej.
+
+### Kawa
+
+| Kolumna                                | Ograniczenie              | Uzasadnienie                                                                                        |
+| -------------------------------------- | ------------------------- | --------------------------------------------------------------------------------------------------- |
+| `name`                                 | wymagana                  | Kawa bez nazwy nie może zostać przedstawiona w katalogu                                             |
+| `slug`                                 | wymagany, unikalny        | Identyfikuje kawę w adresie strony. Powtórzenie uniemożliwiłoby rozstrzygnięcie, którą kawę pokazać |
+| `origin_country`                       | wymagany                  | Kryterium akceptacji historii 1.1 i podstawa filtrowania w historii 1.2                             |
+| `process`                              | wymagana                  | Podstawowa informacja o ziarnie, oczekiwana przez kupujących kawę specialty                         |
+| `roast_level`                          | wymagany, od 1 do 3       | Kryterium akceptacji historii 1.1. Zakres odpowiada trzem stopniom wypału                           |
+| `roasted_on`                           | wymagana                  | Podstawa wyliczenia świeżości. Bez niej nie da się spełnić historii 1.3                             |
+| `altitude_masl`                        | dodatnia, jeśli podana    | Wysokość ujemna lub zerowa nie ma sensu fizycznego                                                  |
+| `cupping_score`                        | od 0 do 100, jeśli podana | Skala oceny sensorycznej                                                                            |
+| `description`, `farm`, `flavour_notes` | opcjonalne                | Nie zawsze dostępne od dostawcy, brak nie blokuje sprzedaży                                         |
+
+### Wariant
+
+| Kolumna                             | Ograniczenie                     | Uzasadnienie                                                                                                  |
+| ----------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `product_id`                        | wymagany, klucz obcy             | Wariant nie istnieje samodzielnie — jest postacią konkretnej kawy                                             |
+| `grind`, `weight_grams`             | wymagane                         | Definiują wariant. Bez nich nie wiadomo, co klient kupuje                                                     |
+| `weight_grams`                      | dodatnia                         | Opakowanie o zerowej lub ujemnej masie nie istnieje                                                           |
+| `price_gross`                       | wymagana, dodatnia               | Sklep nie prowadzi sprzedaży darmowej ani ujemnej                                                             |
+| `stock_quantity`                    | wymagana, nieujemna, domyślnie 0 | Stan ujemny oznaczałby sprzedaż towaru, którego nie ma. Kryterium historii 5.2                                |
+| `active`                            | wymagana, domyślnie prawda       | Nowy wariant jest dostępny, dopóki nie zostanie wyłączony                                                     |
+| `(product_id, grind, weight_grams)` | unikalna                         | Bez tego możliwe byłoby utworzenie dwóch identycznych wariantów tej samej kawy, różniących się wyłącznie ceną |
+
+### Zachowanie klucza obcego
+
+Klucz obcy z wariantu na kawę **nie usuwa kaskadowo**. Kawy nie usuwa się
+z bazy — jest wycofywana. Próba usunięcia ma zakończyć się błędem,
+a nie cichym usunięciem powiązanych wariantów.
 
 ---
 
@@ -147,15 +188,17 @@ nie występuje.
 byłby czytelniejszy, ale jego rozszerzenie wymaga migracji blokującej
 tabelę. Liczba z warunkiem poprawności pozostaje elastyczniejsza.
 
-### Spójność pilnowana przez bazę
+---
 
-Unikalność `slug` jest ograniczeniem bazy danych, nie sprawdzeniem
-w kodzie. Sprawdzenie w aplikacji nie jest wystarczające, ponieważ między
-odczytem a zapisem inny wątek może wstawić tę samą wartość.
+## Indeksy
 
-Para `(product_id, grind, weight_grams)` również jest unikalna. Bez tego
-ograniczenia możliwe byłoby utworzenie dwóch identycznych wariantów
-tej samej kawy, różniących się wyłącznie ceną.
+Indeksy nie są opisane w tym dokumencie. Są decyzją wydajnościową
+wynikającą ze zmierzonych zapytań, a nie z modelu dziedziny, i będą
+zmieniać się niezależnie od niego.
+
+Wyjątkiem jest indeks pod kluczem obcym `product_variant.product_id`,
+który jest elementem struktury — PostgreSQL nie tworzy go automatycznie,
+a każde pobranie wariantów kawy z niego korzysta.
 
 ---
 
@@ -165,4 +208,4 @@ Zdjęcia produktów, płatności jako osobny byt, dostawcy, kupony rabatowe,
 recenzje, subskrypcje.
 
 Żaden z tych bytów nie występuje w historiach użytkownika dla obecnego
-zakresu. Byt nieobecny w wymaganiach nie trafia do modelu.
+zakresu.
