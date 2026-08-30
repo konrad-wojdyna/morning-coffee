@@ -28,7 +28,7 @@ ukończenia historii. Identyfikatory `E0-xx` odsyłają do backlogu technicznego
 
 **Poza zakresem:** wyszukiwanie po nazwie, zdjęcia produktów.
 
-**Zadania:** E0-09, E0-10, E0-11, E0-16
+**Zadania:** E0-09, E0-09a, E0-10, E0-11, E0-16
 
 ---
 
