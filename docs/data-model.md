@@ -122,6 +122,16 @@ z gramaturą. Umieszczenie ich na wariancie powielałoby te same wartości
 w każdej kombinacji zmielenia i wagi, co prowadzi do rozbieżności
 przy aktualizacji.
 
+### Powiązanie jednokierunkowe
+
+Wariant zna swoją kawę, ale kawa nie ma listy wariantów. Kolekcja po stronie
+kawy pozwalałaby sięgać po warianty w dowolnym miejscu kodu, a każde takie
+sięgnięcie oznacza zapytanie do bazy — również wewnątrz pętli. Brak kolekcji
+wymusza jawne napisanie zapytania i czyni koszt widocznym.
+
+Powiązanie zostanie dodane, jeśli pojawi się przypadek użycia, w którym jego
+brak realnie utrudnia pracę.
+
 ### Kwoty w groszach
 
 `price_gross` przechowuje grosze: wartość `5490` oznacza 54,90 zł.
